@@ -118,14 +118,20 @@ func insertInitialTexts() {
 }
 
 func GetRandomTextFromDB() (string, error) {
-	var text string
 	rand.Seed(time.Now().UnixNano())
-	row := db.QueryRow("SELECT content FROM texts ORDER BY RANDOM() LIMIT 1")
-	err := row.Scan(&text)
-	if err != nil {
-		return "", fmt.Errorf("failed to get random text from DB: %w", err)
+	numSentences := rand.Intn(5) + 2 // Randomly choose between 2 and 6 sentences
+	
+	var combinedText string
+	for i := 0; i < numSentences; i++ {
+		var text string
+		row := db.QueryRow("SELECT content FROM texts ORDER BY RANDOM() LIMIT 1")
+		err := row.Scan(&text)
+		if err != nil {
+			return "", fmt.Errorf("failed to get random text from DB: %w", err)
+		}
+		combinedText += text + " "
 	}
-	return text, nil
+	return combinedText, nil
 }
 
 func SaveScore(username string, wpm, accuracy float64, difficulty string) error {
