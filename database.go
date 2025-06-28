@@ -78,7 +78,7 @@ func insertInitialTexts() {
 	}
 }
 
-func getRandomTextFromDB() (string, error) {
+func GetRandomTextFromDB() (string, error) {
 	var text string
 	rand.Seed(time.Now().UnixNano())
 	row := db.QueryRow("SELECT content FROM texts ORDER BY RANDOM() LIMIT 1")
@@ -89,7 +89,7 @@ func getRandomTextFromDB() (string, error) {
 	return text, nil
 }
 
-func saveScore(wpm, accuracy float64) error {
+func SaveScore(wpm, accuracy float64) error {
 	_, err := db.Exec("INSERT INTO scores (wpm, accuracy) VALUES (?, ?)", wpm, accuracy)
 	if err != nil {
 		return fmt.Errorf("failed to save score: %w", err)
@@ -97,7 +97,7 @@ func saveScore(wpm, accuracy float64) error {
 	return nil
 }
 
-func getTopScoresFromDB() ([]Score, error) {
+func GetTopScoresFromDB() ([]Score, error) {
 	rows, err := db.Query("SELECT wpm, accuracy, timestamp FROM scores ORDER BY wpm DESC, accuracy DESC LIMIT 10")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top scores: %w", err)

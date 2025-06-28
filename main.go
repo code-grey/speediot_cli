@@ -2,21 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
-	"log"
 
 	"github.com/gdamore/tcell/v2"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
-	easyText = "The quick brown fox jumps over the lazy dog. This is a simple typing test. Practice makes perfect."
+	easyText   = "The quick brown fox jumps over the lazy dog. This is a simple typing test. Practice makes perfect."
 	mediumText = "A journey of a thousand miles begins with a single step. The early bird catches the worm. All that glitters is not gold."
-	hardText = "The 1st rule of 2025 is: Never give up! @#$! Success often comes after a string of failures. Are you ready for the challenge? (Press ESC to exit)"
+	hardText   = "The 1st rule of 2025 is: Never give up! @#$! Success often comes after a string of failures. Are you ready for the challenge? (Press ESC to exit)"
 
 	ActionPlayAgain    = 0
 	ActionGoToMainMenu = 1
@@ -112,7 +112,7 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 				s.Show()
 
 				if testStarted {
-					saveScore(wpm, accuracy)
+					SaveScore(wpm, accuracy)
 				}
 				return wpm, accuracy
 			}
@@ -123,13 +123,15 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 
 func showMainMenu(s tcell.Screen, style tcell.Style) string {
 	asciiArt := []string{
-		`  _______ _ __   __ _           _       `,
-		` /  ___  (_)  _ \ / _(_)         | |      `,
-		`|  /  /  |_| |_) | |_ _ _ __ ___ | | ___  `,
-		`| |   | | |  _ <|  _| | '_ ` + "`" + ` _ \| |/ _ \ `,
-		`|  \__/  | | |_) | | | | | | | | | |  __/ `,
-		` \_______|_|____/|_| |_|_| |_| |_|_|\___|`,
-		`                                         `,
+		`																`,
+		`                         _ _       _                   _ _ 	`,
+		`                        | (_)     | |                 | (_)	`,
+		` ___ _ __   ___  ___  __| |_  ___ | |_             ___| |_ 	`,
+		`/ __| '_ \ / _ \/ _ \/ _' | |/ _ \| __|           / __| | |	`,
+		`\__ \ |_) |  __/  __/ (_| | | (_) | |_           | (__| | |	`,
+		`|___/ .__/ \___|\___|\__,_|_|\___/ \__|           \___|_|_|	`,
+		`    | |                                  ______            	`,
+		`    |_|                                 |______|           	`,
 	}
 
 	options := []string{
@@ -158,7 +160,7 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 		}
 
 		// Display Scoreboard
-		scores, err := getTopScoresFromDB()
+		scores, err := GetTopScoresFromDB()
 		if err != nil {
 			log.Printf("Error getting scores: %v", err)
 		} else {
@@ -191,7 +193,7 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 				case 2:
 					return hardText
 				case 3:
-					text, err := getRandomTextFromDB()
+					text, err := GetRandomTextFromDB()
 					if err != nil {
 						log.Printf("Error getting dynamic text: %v", err)
 						return easyText // Fallback to easy text on error
@@ -308,7 +310,7 @@ func drawStats(s tcell.Screen, startTime time.Time, testStarted bool, typedText 
 	progressBarWidth := 50
 	progress := float64(cursorPos) / float64(len(testText))
 	filledWidth := int(progress * float64(progressBarWidth))
-	
+
 	progressBar := "["
 	for i := 0; i < filledWidth; i++ {
 		progressBar += "#"
