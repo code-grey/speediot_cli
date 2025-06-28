@@ -10,33 +10,7 @@ import (
 
 
 
-func getUsername(s tcell.Screen, style tcell.Style) string {
-	username := ""
-	prompt := "Enter your username (default: Guest): "
 
-	for {
-		s.Clear()
-		printString(s, 0, 0, prompt+username, style)
-		s.Show()
-
-		ev := s.PollEvent()
-		switch ev := ev.(type) {
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEnter {
-				if username == "" {
-					return "Guest"
-				}
-				return username
-			} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
-				if len(username) > 0 {
-					username = username[:len(username)-1]
-				}
-			} else if ev.Key() == tcell.KeyRune {
-				username += string(ev.Rune())
-			}
-		}
-	}
-}
 
 func main() {
 	s, err := tcell.NewScreen()
@@ -57,10 +31,10 @@ func main() {
 	s.SetStyle(defStyle)
 	s.Clear()
 
-	username := getUsername(s, defStyle)
+	
 
 	for {
-		selectedText := showMainMenu(s, defStyle)
+		selectedText, username := showMainMenu(s, defStyle)
 		wpm, accuracy := runTest(s, selectedText, defStyle, correctStyle, incorrectStyle, currentStyle, username)
 		action := askToRestart(s, defStyle, wpm, accuracy)
 		if action == ActionExit {

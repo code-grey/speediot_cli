@@ -10,7 +10,7 @@ import (
 
 
 
-func showMainMenu(s tcell.Screen, style tcell.Style) string {
+func showMainMenu(s tcell.Screen, style tcell.Style) (string, string) {
 	asciiArt := []string{
 		`																`,
 		`                         _ _       _                   _ _ 	`,
@@ -76,18 +76,18 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 			} else if ev.Key() == tcell.KeyEnter {
 				switch selected {
 				case 0:
-					return easyText
+					return easyText, getUsername(s, style)
 				case 1:
-					return mediumText
+					return mediumText, getUsername(s, style)
 				case 2:
-					return hardText
+					return hardText, getUsername(s, style)
 				case 3:
 					text, err := GetRandomTextFromDB()
 					if err != nil {
 						log.Printf("Error getting dynamic text: %v", err)
-						return easyText // Fallback to easy text on error
+						return easyText, getUsername(s, style) // Fallback to easy text on error
 					}
-					return text
+					return text, getUsername(s, style)
 				}
 			} else if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				os.Exit(0)
@@ -136,6 +136,34 @@ func askToRestart(s tcell.Screen, style tcell.Style, wpm, accuracy float64) int 
 				}
 			} else if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				os.Exit(0)
+			}
+		}
+	}
+}
+
+func getUsername(s tcell.Screen, style tcell.Style) string {
+	username := ""
+	prompt := "Enter your username (default: Guest): "
+
+	for {
+		s.Clear()
+		printString(s, 0, 0, prompt+username, style)
+		s.Show()
+
+		ev := s.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEnter {
+				if username == "" {
+					return "Guest"
+				}
+				return username
+			} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
+				if len(username) > 0 {
+					username = username[:len(username)-1]
+				}
+			} else if ev.Key() == tcell.KeyRune {
+				username += string(ev.Rune())
 			}
 		}
 	}
