@@ -38,12 +38,6 @@ func init() {
 		log.Fatal(err)
 	}
 
-	// Drop the scores table if it exists to apply schema changes
-	_, err = db.Exec("DROP TABLE IF EXISTS scores;")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	createScoresTableSQL := `
 	CREATE TABLE IF NOT EXISTS scores (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
