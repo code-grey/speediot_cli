@@ -17,6 +17,10 @@ const (
 	easyText = "The quick brown fox jumps over the lazy dog. This is a simple typing test. Practice makes perfect."
 	mediumText = "A journey of a thousand miles begins with a single step. The early bird catches the worm. All that glitters is not gold."
 	hardText = "The 1st rule of 2025 is: Never give up! @#$! Success often comes after a string of failures. Are you ready for the challenge? (Press ESC to exit)"
+
+	ActionPlayAgain    = 0
+	ActionGoToMainMenu = 1
+	ActionExit         = 2
 )
 
 func main() {
@@ -40,16 +44,20 @@ func main() {
 
 	for {
 		selectedText := showMainMenu(s, defStyle)
-		runTest(s, selectedText, defStyle, correctStyle, incorrectStyle, currentStyle)
-		if !askToRestart(s, defStyle) {
+		wpm, accuracy := runTest(s, selectedText, defStyle, correctStyle, incorrectStyle, currentStyle)
+		action := askToRestart(s, defStyle, wpm, accuracy)
+		if action == ActionExit {
 			break
+		} else if action == ActionGoToMainMenu {
+			continue
 		}
+		// If ActionPlayAgain, the loop continues naturally
 	}
 
 	s.Fini()
 }
 
-func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrectStyle, currentStyle tcell.Style) {
+func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrectStyle, currentStyle tcell.Style) (float64, float64) {
 	rand.Seed(time.Now().UnixNano())
 	words := strings.Fields(textToType)
 	rand.Shuffle(len(words), func(i, j int) {
@@ -59,13 +67,14 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 
 	typedText := make([]rune, 0, len(testText))
 	cursorPos := 0
+	errors := 0 // Reintroduce errors counter
 	startTime := time.Time{}
 	testStarted := false
 
 	for {
 		s.Clear()
 		printText(s, testText, typedText, cursorPos, correctStyle, incorrectStyle, currentStyle, defStyle)
-		drawStats(s, startTime, testStarted, typedText, testText, defStyle, cursorPos)
+		wpm, accuracy := drawStats(s, startTime, testStarted, typedText, testText, defStyle, cursorPos, errors)
 		s.Show()
 
 		ev := s.PollEvent()
@@ -74,7 +83,7 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 			s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				return
+				return 0, 0 // Corrected: return values for escape
 			} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
 				if cursorPos > 0 {
 					_, size := utf8.DecodeLastRuneInString(string(typedText[:cursorPos]))
@@ -89,7 +98,7 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 				typedText = append(typedText, ev.Rune())
 				if cursorPos < len(testText) {
 					if ev.Rune() != rune(testText[cursorPos]) {
-						// No longer incrementing errors here, calculated dynamically in drawStats
+						errors++ // Increment errors only on incorrect input
 					}
 				}
 				cursorPos += utf8.RuneLen(ev.Rune())
@@ -99,23 +108,28 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 				// Test finished
 				s.Clear()
 				printText(s, testText, typedText, cursorPos, correctStyle, incorrectStyle, currentStyle, defStyle)
-				drawStats(s, startTime, testStarted, typedText, testText, defStyle, cursorPos)
+				wpm, accuracy = drawStats(s, startTime, testStarted, typedText, testText, defStyle, cursorPos, errors)
 				s.Show()
-				return
+
+				if testStarted {
+					saveScore(wpm, accuracy)
+				}
+				return wpm, accuracy
 			}
 		}
 	}
+	return 0, 0 // Should not be reached, but required for function signature
 }
 
 func showMainMenu(s tcell.Screen, style tcell.Style) string {
 	asciiArt := []string{
-		`  _______ _            _   _             _   _           _    `,
-		` |__   __| |          | | (_)           | | (_)         | |   `,
-		`    | |  | |__   ___  | |_ _ _ __ ___   | |_ _  ___  ___| | __`,
-		`    | |  | '_ \ / _ \ | __| | '_ ` + "`" + ` _ \  | __| |/ _ \/ __| |/ /`,
-		`    | |  | | | |  __/ | |_| | | | | | | | |_| |  __/ (__|   < `,
-		`    |_|  |_| |_|\___|  \__|_|_|_| |_| |_|  \__|_|\___|\___|_|\_\`,
-		`                                                             `,
+		`  _______ _ __   __ _           _       `,
+		` /  ___  (_)  _ \ / _(_)         | |      `,
+		`|  /  /  |_| |_) | |_ _ _ __ ___ | | ___  `,
+		`| |   | | |  _ <|  _| | '_ ` + "`" + ` _ \| |/ _ \ `,
+		`|  \__/  | | |_) | | | | | | | | | |  __/ `,
+		` \_______|_|____/|_| |_|_| |_| |_|_|\___|`,
+		`                                         `,
 	}
 
 	options := []string{
@@ -142,6 +156,23 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 			}
 			printString(s, 0, yOffset+3+i, opt, currentStyle)
 		}
+
+		// Display Scoreboard
+		scores, err := getTopScoresFromDB()
+		if err != nil {
+			log.Printf("Error getting scores: %v", err)
+		} else {
+			printString(s, 0, yOffset+3+len(options)+2, "--- Scoreboard (Top 10) ---", style)
+			if len(scores) == 0 {
+				printString(s, 0, yOffset+3+len(options)+3, "No scores yet. Play a test!", style)
+			} else {
+				for i, score := range scores {
+					scoreLine := fmt.Sprintf("%d. WPM: %.2f, Accuracy: %.2f%%", i+1, score.WPM, score.Accuracy)
+					printString(s, 0, yOffset+3+len(options)+3+i, scoreLine, style)
+				}
+			}
+		}
+
 		s.Show()
 
 		ev := s.PollEvent()
@@ -174,20 +205,43 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 	}
 }
 
-func askToRestart(s tcell.Screen, style tcell.Style) bool {
+func askToRestart(s tcell.Screen, style tcell.Style, wpm, accuracy float64) int {
+	options := []string{
+		"1. Play again",
+		"2. Go to Main Menu",
+		"3. Exit",
+	}
+	selected := 0
+
 	for {
 		s.Clear()
-		printString(s, 0, 0, "Play again? (y/n)", style)
+		printString(s, 0, 0, fmt.Sprintf("Your Score: WPM: %.2f, Accuracy: %.2f%%", wpm, accuracy), style)
+		printString(s, 0, 2, "What would you like to do?", style)
+
+		for i, opt := range options {
+			currentStyle := style
+			if i == selected {
+				currentStyle = style.Background(tcell.ColorWhite).Foreground(tcell.ColorBlack)
+			}
+			printString(s, 0, 4+i, opt, currentStyle)
+		}
 		s.Show()
 
 		ev := s.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyRune {
-				if ev.Rune() == 'y' || ev.Rune() == 'Y' {
-					return true
-				} else if ev.Rune() == 'n' || ev.Rune() == 'N' {
-					return false
+			if ev.Key() == tcell.KeyUp {
+				selected = (selected - 1 + len(options)) % len(options)
+			} else if ev.Key() == tcell.KeyDown {
+				selected = (selected + 1) % len(options)
+			} else if ev.Key() == tcell.KeyEnter {
+				switch selected {
+				case 0: // Play again
+					return ActionPlayAgain
+				case 1: // Go to Main Menu
+					return ActionGoToMainMenu
+				case 2: // Exit
+					os.Exit(0)
 				}
 			} else if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				os.Exit(0)
@@ -223,7 +277,7 @@ func printText(s tcell.Screen, testText string, typedText []rune, cursorPos int,
 	}
 }
 
-func drawStats(s tcell.Screen, startTime time.Time, testStarted bool, typedText []rune, testText string, style tcell.Style, cursorPos int) {
+func drawStats(s tcell.Screen, startTime time.Time, testStarted bool, typedText []rune, testText string, style tcell.Style, cursorPos int, errors int) (float64, float64) {
 	_, h := s.Size()
 	y := h - 2
 
@@ -235,24 +289,19 @@ func drawStats(s tcell.Screen, startTime time.Time, testStarted bool, typedText 
 		wordsTyped := float64(len(typedText)) / 5.0 // Assuming average word length of 5 characters
 		wpm = (wordsTyped / duration.Seconds()) * 60.0
 
-		correctChars := 0
-		for i, r := range typedText {
-			if i < len(testText) && r == rune(testText[i]) {
-				correctChars++
+		// Calculate accuracy based on cumulative errors
+		totalAttemptedChars := float64(cursorPos) // Use cursorPos as it represents how far the user has progressed in the test text
+
+		if totalAttemptedChars > 0 {
+			// Accuracy = (Total characters attempted - Cumulative errors) / Total characters attempted
+			accuracy = (totalAttemptedChars - float64(errors)) / totalAttemptedChars * 100.0
+			if accuracy < 0 { // Accuracy cannot be negative
+				accuracy = 0
 			}
-		}
-		if len(typedText) > 0 {
-			accuracy = (float64(correctChars) / float64(len(typedText))) * 100.0
 		}
 	}
 
-	incorrectChars := 0
-	for i, r := range typedText {
-		if i < len(testText) && r != rune(testText[i]) {
-			incorrectChars++
-		}
-	}
-	statLine := fmt.Sprintf("WPM: %.2f | Accuracy: %.2f%% | Errors: %d", wpm, accuracy, incorrectChars)
+	statLine := fmt.Sprintf("WPM: %.2f | Accuracy: %.2f%% | Errors: %d", wpm, accuracy, errors)
 	printString(s, 0, y, statLine, style)
 
 	// Progress bar
@@ -269,6 +318,8 @@ func drawStats(s tcell.Screen, startTime time.Time, testStarted bool, typedText 
 	}
 	progressBar += "]"
 	printString(s, 0, y+1, progressBar, style)
+
+	return wpm, accuracy
 }
 
 func printString(s tcell.Screen, x, y int, str string, style tcell.Style) {
