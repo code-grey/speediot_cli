@@ -10,7 +10,7 @@ import (
 
 
 
-func showMainMenu(s tcell.Screen, style tcell.Style) (string, string) {
+func showMainMenu(s tcell.Screen, style tcell.Style) (string, string, string) {
 	asciiArt := []string{
 		`																`,
 		`                         _ _       _                   _ _ 	`,
@@ -58,7 +58,7 @@ func showMainMenu(s tcell.Screen, style tcell.Style) (string, string) {
 				printString(s, 0, yOffset+3+len(options)+3, "No scores yet. Play a test!", style)
 			} else {
 				for i, score := range scores {
-					scoreLine := fmt.Sprintf("%d. %s - Score: %.2f (WPM: %.2f, Accuracy: %.2f%%)", i+1, score.Username, score.CalculatedScore, score.WPM, score.Accuracy)
+					scoreLine := fmt.Sprintf("%d. %s (%s) - Score: %.2f (WPM: %.2f, Accuracy: %.2f%%)", i+1, score.Username, score.Difficulty, score.CalculatedScore, score.WPM, score.Accuracy)
 					printString(s, 0, yOffset+3+len(options)+3+i, scoreLine, style)
 				}
 			}
@@ -76,18 +76,18 @@ func showMainMenu(s tcell.Screen, style tcell.Style) (string, string) {
 			} else if ev.Key() == tcell.KeyEnter {
 				switch selected {
 				case 0:
-					return easyText, getUsername(s, style)
+					return easyText, getUsername(s, style), "Easy"
 				case 1:
-					return mediumText, getUsername(s, style)
+					return mediumText, getUsername(s, style), "Medium"
 				case 2:
-					return hardText, getUsername(s, style)
+					return hardText, getUsername(s, style), "Hard"
 				case 3:
 					text, err := GetRandomTextFromDB()
 					if err != nil {
 						log.Printf("Error getting dynamic text: %v", err)
-						return easyText, getUsername(s, style) // Fallback to easy text on error
+						return easyText, getUsername(s, style), "Easy" // Fallback to easy text on error
 					}
-					return text, getUsername(s, style)
+					return text, getUsername(s, style), "Dynamic"
 				}
 			} else if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
 				os.Exit(0)

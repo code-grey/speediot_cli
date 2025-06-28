@@ -15,6 +15,7 @@ type Score struct {
 	WPM      float64
 	Accuracy float64
 	CalculatedScore float64
+	Difficulty string
 	Timestamp time.Time
 }
 
@@ -45,12 +46,46 @@ func init() {
 		wpm REAL NOT NULL,
 		accuracy REAL NOT NULL,
 		calculated_score REAL NOT NULL,
+		difficulty TEXT NOT NULL DEFAULT 'Unknown',
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 	`
 	_, err = db.Exec(createScoresTableSQL)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// Check if 'difficulty' column exists and migrate if not
+	rows, err := db.Query("PRAGMA table_info(scores);")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	columnExists := false
+	for rows.Next() {
+		var cid int
+		var name string
+		var ctype string
+		var notnull int
+		var dflt_value sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt_value, &pk); err != nil {
+			log.Fatal(err)
+		}
+		if name == "difficulty" {
+			columnExists = true
+			break
+		}
+	}
+
+	if !columnExists {
+		log.Println("Migrating scores table: Adding 'difficulty' column.")
+		_, err = db.Exec("ALTER TABLE scores ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'Unknown';")
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Migration complete.")
 	}
 
 	// Insert some initial texts if the table is empty
@@ -93,9 +128,9 @@ func GetRandomTextFromDB() (string, error) {
 	return text, nil
 }
 
-func SaveScore(username string, wpm, accuracy float64) error {
+func SaveScore(username string, wpm, accuracy float64, difficulty string) error {
 	calculatedScore := wpm * (accuracy / 100.0) // Calculate score
-	_, err := db.Exec("INSERT INTO scores (username, wpm, accuracy, calculated_score) VALUES (?, ?, ?, ?)", username, wpm, accuracy, calculatedScore)
+	_, err := db.Exec("INSERT INTO scores (username, wpm, accuracy, calculated_score, difficulty) VALUES (?, ?, ?, ?, ?)", username, wpm, accuracy, calculatedScore, difficulty)
 	if err != nil {
 		return fmt.Errorf("failed to save score: %w", err)
 	}
@@ -103,7 +138,7 @@ func SaveScore(username string, wpm, accuracy float64) error {
 }
 
 func GetTopScoresFromDB() ([]Score, error) {
-	rows, err := db.Query("SELECT username, wpm, accuracy, calculated_score, timestamp FROM scores ORDER BY calculated_score DESC LIMIT 10")
+	rows, err := db.Query("SELECT username, wpm, accuracy, calculated_score, difficulty, timestamp FROM scores ORDER BY calculated_score DESC LIMIT 10")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top scores: %w", err)
 	}
@@ -112,7 +147,7 @@ func GetTopScoresFromDB() ([]Score, error) {
 	var scores []Score
 	for rows.Next() {
 		var s Score
-		if err := rows.Scan(&s.Username, &s.WPM, &s.Accuracy, &s.CalculatedScore, &s.Timestamp); err != nil {
+		if err := rows.Scan(&s.Username, &s.WPM, &s.Accuracy, &s.CalculatedScore, &s.Difficulty, &s.Timestamp); err != nil {
 			log.Printf("Error scanning score row: %v", err)
 			continue
 		}

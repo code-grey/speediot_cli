@@ -34,8 +34,8 @@ func main() {
 	
 
 	for {
-		selectedText, username := showMainMenu(s, defStyle)
-		wpm, accuracy := runTest(s, selectedText, defStyle, correctStyle, incorrectStyle, currentStyle, username)
+		selectedText, username, difficulty := showMainMenu(s, defStyle)
+		wpm, accuracy := runTest(s, selectedText, defStyle, correctStyle, incorrectStyle, currentStyle, username, difficulty)
 		action := askToRestart(s, defStyle, wpm, accuracy)
 		if action == ActionExit {
 			break
