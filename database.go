@@ -11,8 +11,10 @@ import (
 )
 
 type Score struct {
+	Username string
 	WPM      float64
 	Accuracy float64
+	CalculatedScore float64
 	Timestamp time.Time
 }
 
@@ -36,11 +38,19 @@ func init() {
 		log.Fatal(err)
 	}
 
+	// Drop the scores table if it exists to apply schema changes
+	_, err = db.Exec("DROP TABLE IF EXISTS scores;")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	createScoresTableSQL := `
 	CREATE TABLE IF NOT EXISTS scores (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT NOT NULL,
 		wpm REAL NOT NULL,
 		accuracy REAL NOT NULL,
+		calculated_score REAL NOT NULL,
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -89,8 +99,9 @@ func GetRandomTextFromDB() (string, error) {
 	return text, nil
 }
 
-func SaveScore(wpm, accuracy float64) error {
-	_, err := db.Exec("INSERT INTO scores (wpm, accuracy) VALUES (?, ?)", wpm, accuracy)
+func SaveScore(username string, wpm, accuracy float64) error {
+	calculatedScore := wpm * (accuracy / 100.0) // Calculate score
+	_, err := db.Exec("INSERT INTO scores (username, wpm, accuracy, calculated_score) VALUES (?, ?, ?, ?)", username, wpm, accuracy, calculatedScore)
 	if err != nil {
 		return fmt.Errorf("failed to save score: %w", err)
 	}
@@ -98,7 +109,7 @@ func SaveScore(wpm, accuracy float64) error {
 }
 
 func GetTopScoresFromDB() ([]Score, error) {
-	rows, err := db.Query("SELECT wpm, accuracy, timestamp FROM scores ORDER BY wpm DESC, accuracy DESC LIMIT 10")
+	rows, err := db.Query("SELECT username, wpm, accuracy, calculated_score, timestamp FROM scores ORDER BY calculated_score DESC LIMIT 10")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top scores: %w", err)
 	}
@@ -107,7 +118,7 @@ func GetTopScoresFromDB() ([]Score, error) {
 	var scores []Score
 	for rows.Next() {
 		var s Score
-		if err := rows.Scan(&s.WPM, &s.Accuracy, &s.Timestamp); err != nil {
+		if err := rows.Scan(&s.Username, &s.WPM, &s.Accuracy, &s.CalculatedScore, &s.Timestamp); err != nil {
 			log.Printf("Error scanning score row: %v", err)
 			continue
 		}

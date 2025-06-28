@@ -9,7 +9,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrectStyle, currentStyle tcell.Style) (float64, float64) {
+func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrectStyle, currentStyle tcell.Style, username string) (float64, float64) {
 	rand.Seed(time.Now().UnixNano())
 	words := strings.Fields(textToType)
 	rand.Shuffle(len(words), func(i, j int) {
@@ -64,7 +64,7 @@ func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrec
 				s.Show()
 
 				if testStarted {
-					SaveScore(wpm, accuracy)
+					SaveScore(username, wpm, accuracy)
 				}
 				return wpm, accuracy
 			}

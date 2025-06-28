@@ -58,7 +58,7 @@ func showMainMenu(s tcell.Screen, style tcell.Style) string {
 				printString(s, 0, yOffset+3+len(options)+3, "No scores yet. Play a test!", style)
 			} else {
 				for i, score := range scores {
-					scoreLine := fmt.Sprintf("%d. WPM: %.2f, Accuracy: %.2f%%", i+1, score.WPM, score.Accuracy)
+					scoreLine := fmt.Sprintf("%d. %s - Score: %.2f (WPM: %.2f, Accuracy: %.2f%%)", i+1, score.Username, score.CalculatedScore, score.WPM, score.Accuracy)
 					printString(s, 0, yOffset+3+len(options)+3+i, scoreLine, style)
 				}
 			}
