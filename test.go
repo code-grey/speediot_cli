@@ -11,11 +11,15 @@ import (
 
 func runTest(s tcell.Screen, textToType string, defStyle, correctStyle, incorrectStyle, currentStyle tcell.Style, username string, difficulty string) (float64, float64) {
 	rand.Seed(time.Now().UnixNano())
-	words := strings.Fields(textToType)
-	rand.Shuffle(len(words), func(i, j int) {
-		words[i], words[j] = words[j], words[i]
-	})
-	testText := strings.Join(words, " ")
+	testText := textToType
+
+	if difficulty != "Dynamic" {
+		words := strings.Fields(textToType)
+		rand.Shuffle(len(words), func(i, j int) {
+			words[i], words[j] = words[j], words[i]
+		})
+		testText = strings.Join(words, " ")
+	}
 
 	typedText := make([]rune, 0, len(testText))
 	cursorPos := 0

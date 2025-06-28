@@ -1,9 +1,9 @@
 package main
 
 const (
-	easyText   = "The quick brown fox jumps over the lazy dog. This is a simple typing test. Practice makes perfect. This sentence contains all letters of the alphabet. It is often used to test typewriters and computer keyboards. A quick brown fox is a common phrase."
-	mediumText = "The vicissitudes of life often present unforeseen challenges, necessitating a resilient spirit and an unwavering commitment to perseverance. Embrace the complexities, for within them lie opportunities for profound growth and unparalleled self-discovery."
-	hardText   = "The 1st rule of 2025 is: Never give up! @#$! Success often comes after a string of failures. Are you ready for the challenge? (Press ESC to exit) The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle. As with all matters of the heart, you'll know when you find it."
+	easyText   = "apple banana cherry date elderberry fig grape honeydew kiwi lemon mango nectarine orange papaya quince raspberry strawberry tangerine ugli fruit vanilla watermelon xigua yellow passionfruit zucchini"
+	mediumText = "The Quick Brown Fox Jumps Over The Lazy Dog. A Journey Of A Thousand Miles Begins With A Single Step. All That Glitters Is Not Gold. Practice Makes Perfect. The Early Bird Catches The Worm."
+	hardText   = "On December 25, 1991, the Soviet Union officially dissolved, marking the end of the Cold War era. This historic event, occurring after 69 years, reshaped global geopolitics. The USSR's collapse led to the independence of 15 republics, including Russia, Ukraine, and Kazakhstan. Its legacy, including the space race and nuclear arms treaties, continues to influence international relations in 2025. @#$!"
 
 	ActionPlayAgain    = 0
 	ActionGoToMainMenu = 1
