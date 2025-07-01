@@ -19,11 +19,17 @@ type Score struct {
 	Timestamp time.Time
 }
 
-var db *sql.DB
+var textsDB *sql.DB
+var scoresDB *sql.DB
 
 func init() {
 	var err error
-	db, err = sql.Open("sqlite3", "./texts.db")
+	textsDB, err = sql.Open("sqlite3", "./texts.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	scoresDB, err = sql.Open("sqlite3", "./leaderboard.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,7 +40,7 @@ func init() {
 		content TEXT NOT NULL UNIQUE
 	);
 	`
-	_, err = db.Exec(createTextsTableSQL)
+	_, err = textsDB.Exec(createTextsTableSQL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,13 +56,13 @@ func init() {
 		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 	`
-	_, err = db.Exec(createScoresTableSQL)
+	_, err = scoresDB.Exec(createScoresTableSQL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Check if 'difficulty' column exists and migrate if not
-	rows, err := db.Query("PRAGMA table_info(scores);")
+	rows, err := scoresDB.Query("PRAGMA table_info(scores);")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +87,7 @@ func init() {
 
 	if !columnExists {
 		log.Println("Migrating scores table: Adding 'difficulty' column.")
-		_, err = db.Exec("ALTER TABLE scores ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'Unknown';")
+		_, err = scoresDB.Exec("ALTER TABLE scores ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'Unknown';")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -94,7 +100,7 @@ func init() {
 
 func insertInitialTexts() {
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM texts").Scan(&count)
+	err := textsDB.QueryRow("SELECT COUNT(*) FROM texts").Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -108,7 +114,7 @@ func insertInitialTexts() {
 			"Believe you can and you're halfway there. Doubt kills more dreams than failure ever will.",
 		}
 		for _, text := range textsToInsert {
-			_, err := db.Exec("INSERT OR IGNORE INTO texts (content) VALUES (?)", text)
+			_, err := textsDB.Exec("INSERT OR IGNORE INTO texts (content) VALUES (?)", text)
 			if err != nil {
 				log.Printf("Error inserting text: %v\n", err)
 			}
@@ -124,7 +130,7 @@ func GetRandomTextFromDB() (string, error) {
 	var combinedText string
 	for i := 0; i < numSentences; i++ {
 		var text string
-		row := db.QueryRow("SELECT content FROM texts ORDER BY RANDOM() LIMIT 1")
+		row := textsDB.QueryRow("SELECT content FROM texts ORDER BY RANDOM() LIMIT 1")
 		err := row.Scan(&text)
 		if err != nil {
 			return "", fmt.Errorf("failed to get random text from DB: %w", err)
@@ -136,7 +142,7 @@ func GetRandomTextFromDB() (string, error) {
 
 func SaveScore(username string, wpm, accuracy float64, difficulty string) error {
 	calculatedScore := wpm * (accuracy / 100.0) // Calculate score
-	_, err := db.Exec("INSERT INTO scores (username, wpm, accuracy, calculated_score, difficulty) VALUES (?, ?, ?, ?, ?)", username, wpm, accuracy, calculatedScore, difficulty)
+	_, err := scoresDB.Exec("INSERT INTO scores (username, wpm, accuracy, calculated_score, difficulty) VALUES (?, ?, ?, ?, ?)", username, wpm, accuracy, calculatedScore, difficulty)
 	if err != nil {
 		return fmt.Errorf("failed to save score: %w", err)
 	}
@@ -144,7 +150,7 @@ func SaveScore(username string, wpm, accuracy float64, difficulty string) error 
 }
 
 func GetTopScoresFromDB() ([]Score, error) {
-	rows, err := db.Query("SELECT username, wpm, accuracy, calculated_score, difficulty, timestamp FROM scores ORDER BY calculated_score DESC LIMIT 10")
+	rows, err := scoresDB.Query("SELECT username, wpm, accuracy, calculated_score, difficulty, timestamp FROM scores ORDER BY calculated_score DESC LIMIT 10")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top scores: %w", err)
 	}
